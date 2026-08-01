@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>متابعة الأدوية</title>
+<style>
+  body { font-family: "Tahoma", sans-serif; background:#f5f7fb; margin:0; padding:20px; }
+ .container { max-width:700px; margin:auto; background:white; padding:20px; border-radius:16px; box-shadow:0 4px 12px rgba(0,0,0,0.1); }
+  h1 { text-align:center; color:#2c3e50; }
+  form { display:grid; gap:10px; margin-bottom:20px; }
+  input, button { padding:10px; border:1px solid #ddd; border-radius:8px; font-size:16px; }
+  button { background:#3498db; color:white; border:none; cursor:pointer; }
+  button:hover { background:#2980b9; }
+ .med { padding:15px; border-radius:12px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; transition:0.3s; }
+ .status-pending { background:#ecf0f1; }
+ .status-soon { background:#fff3cd; }
+ .status-taken { background:#d4edda; }
+ .status-missed { background:#f8d7da; }
+ .med-info { flex:1; }
+ .med-name { font-weight:bold; font-size:18px; }
+ .med-time { font-size:14px; color:#555; }
+ .delete { background:#e74c3c; padding:6px 10px; font-size:14px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>💊 متابعة أدويتي</h1>
+
+  <form id="medForm">
+    <input type="text" id="name" placeholder="اسم الدواء" required>
+    <input type="time" id="time" required>
+    <input type="number" id="doses" placeholder="عدد المرات باليوم" min="1" value="1" required>
+    <button type="submit">إضافة دواء</button>
+  </form>
+
+  <div id="medList"></div>
+</div>
+
+<script>
+let meds = JSON.parse(localStorage.getItem('meds')) || [];
+
+function save() {
+  localStorage.setItem('meds', JSON.stringify(meds));
+}
+
+function render() {
+  const list = document.getElementById('medList');
+  list.innerHTML = '';
+  const today = new Date().toDateString();
+
+  meds.forEach((med, i) => {
+    const medTime = new Date();
+    const [h,m] = med.time.split(':');
+    medTime.setHours(h,m,0);
+
+    const now = new Date();
+    let status = 'pending';
+    if(med.taken === today) status = 'taken';
+    else if(now > medTime && now - medTime > 30*60*1000) status = 'missed'; // فات 30 دقيقة
+    else if(now > medTime) status = 'soon';
+
+    const div = document.createElement('div');
+    div.className = `med status-${status}`;
+    div.innerHTML = `
+      <div class="med-info">
+        <div class="med-name">${med.name}</div>
+        <div class="med-time">الموعد: ${med.time} | مرات: ${med.doses}/يوم</div>
+      </div>
+      <div>
+        ${status!== 'taken'? `<button onclick="take(${i})">شربت</button>` : '✅ تم'}
+        <button class="delete" onclick="del(${i})">حذف</button>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function take(i) {
+  meds[i].taken = new Date().toDateString();
+  save(); render();
+}
+
+function del(i) {
+  meds.splice(i,1);
+  save(); render();
+}
+
+document.getElementById('medForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  meds.push({
+    name: document.getElementById('name').value,
+    time: document.getElementById('time').value,
+    doses: document.getElementById('doses').value,
+    taken: null
+  });
+  e.target.reset();
+  save(); render();
+});
+
+render();
+</script>
+</body>
+</html>
